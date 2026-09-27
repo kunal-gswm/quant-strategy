@@ -1,0 +1,2 @@
+trade_id,symbol,signal_timestamp,entry_timestamp,exit_timestamp,entry_price,exit_price,stop_price,target_price,atr_at_signal,risk_per_share,quantity,gross_pnl,total_costs,net_pnl,r_multiple,exit_reason,ambiguous_exit
+1,PERSISTENT.NS,2025-01-15,2025-01-16,2025-01-22,6078.446653361092,5717.049361181251,5719.909315839171,6656.266329259159,208.07933631555267,358.5373375219215,2,-722.7945843596826,26.269133302338638,-749.0637176620213,-1.044610476051497,STOP,False

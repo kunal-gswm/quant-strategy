@@ -11,8 +11,7 @@ class BacktestEngine:
         self.config = config
         self.ledger = TradeLedger()
 
-    def run(self, df: pd.DataFrame):
-        symbol = "UNKNOWN"
+    def run(self, df: pd.DataFrame, symbol: str = "UNKNOWN"):
         
         signals = self.strategy.generate_signals(df)
         
@@ -70,20 +69,20 @@ class BacktestEngine:
             if open_position is None and pending_order is None:
                 if signals.iloc[i]:
                     atr = df["atr14"].iloc[i]
-                    stop = bar_close - self.config.strategy.stop_atr_multiple * atr
-                    
-                    reward_risk = self.config.strategy.reward_risk_multiple
-                    target = bar_close + reward_risk * (bar_close - stop)
-                    pending_order = (t, stop, target, atr)
+                    pending_order = (t, atr)
                     
             if pending_order is not None and open_position is None and pending_order[0] != t:
-                signal_ts, stop, target, atr = pending_order
+                signal_ts, atr = pending_order
                 
                 entry_fill = apply_slippage(
                     bar_open, "buy", 
                     self.config.execution.slippage_type, 
                     self.config.execution.slippage_value
                 )
+                
+                stop = entry_fill - self.config.strategy.stop_atr_multiple * atr
+                reward_risk = self.config.strategy.reward_risk_multiple
+                target = entry_fill + reward_risk * (entry_fill - stop)
                 
                 qty = size_position(
                     entry_fill, stop, 
