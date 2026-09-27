@@ -1,0 +1,2 @@
+status,universe,details,required_dataset
+PARTIAL,SURVIVORSHIP-BIASED CURRENT UNIVERSE,Historical NIFTY 500 constituent membership not present in the repository or local cache; current results therefore remain on the active-stock universe only.,"Point-in-time NSE historical constituent membership file for NIFTY 500 / relevant index universe between 2018 and 2025, including delisted and merged companies."

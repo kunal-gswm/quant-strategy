@@ -1,0 +1,7 @@
+metric,value
+median_final_pnl,71295.65886557999
+p05_final_pnl,35618.44109013008
+p95_final_pnl,107259.85678720256
+median_max_drawdown,9821.533424762718
+p95_max_drawdown,16976.74410017535
+probability_loss,0.0004

@@ -1,0 +1,10 @@
+metric,value,detail
+top_1_contribution,1973.0977828578184,
+top_3_contribution,5907.712780217065,
+top_5_contribution,9820.598637324594,
+pnl_without_top_1,69312.51250689589,
+pnl_without_top_3,65377.89750953664,
+pnl_without_top_5,61465.01165242911,
+concentration_stock,5576.058263749386,BALKRISIND.NS
+concentration_sector,12213.866423212221,Pharma & Healthcare
+concentration_regime,66202.52709350594,BULL
