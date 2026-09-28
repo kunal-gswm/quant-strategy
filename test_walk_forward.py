@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-RESULTS_DIR = Path("d:/stratergy/results")
+RESULTS_DIR = Path("d:/stratergy/results/historical")
 
 def test_training_trades_excluded_from_oos():
     integrity = pd.read_csv(RESULTS_DIR / "walk_forward_integrity.csv")

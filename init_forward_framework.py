@@ -1,7 +1,7 @@
 import pandas as pd
 from pathlib import Path
 
-RESULTS_DIR = Path("d:/stratergy/results")
+RESULTS_DIR = Path("d:/stratergy/results/historical")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 def init_csv(filename, columns):

@@ -34,7 +34,7 @@ from indicators import ema, rsi, atr
 from strategy.trend_pullback import TrendPullbackStrategy
 from data.validator import DataValidator
 from analysis.monte_carlo import run_monte_carlo
-from run_walk_forward import (
+from research.walk_forward import (
     classify_execution,
     bootstrap_ci,
     WALK_FORWARD_WINDOWS,
