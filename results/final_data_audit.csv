@@ -1,0 +1,6 @@
+check,status
+duplicate_timestamps,PASS
+missing_ohlcv,PASS
+impossible_prices,PASS
+split_anomalies,PASS WITH CAVEAT
+extreme_gaps,PASS
