@@ -38,8 +38,8 @@ class ForwardPaperEngine:
         if (RESULTS_DIR / "forward_signals.csv").exists():
             sigs = pd.read_csv(RESULTS_DIR / "forward_signals.csv").to_dict('records')
             self.signals_log = sigs
-            # Active signals are those marked PENDING
-            self.active_signals = [s for s in sigs if s["signal_status"] == "PENDING"]
+            # Active signals are those marked ENTRY_PENDING
+            self.active_signals = [s for s in sigs if s["signal_status"] == "ENTRY_PENDING"]
             
         if (RESULTS_DIR / "forward_trades.csv").exists():
             self.trades_log = pd.read_csv(RESULTS_DIR / "forward_trades.csv").to_dict('records')
