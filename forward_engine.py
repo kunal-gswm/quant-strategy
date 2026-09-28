@@ -61,6 +61,20 @@ class ForwardPaperEngine:
         with open(RESULTS_DIR / "forward_open_positions.json", "w") as f:
             json.dump(self.active_positions, f)
 
+    def save_universe_snapshot(self, snapshot_date: pd.Timestamp, universe: list):
+        """Save a dated snapshot of the universe used for this session."""
+        records = []
+        for u in universe:
+            sym = u["symbol"] if isinstance(u, dict) else u
+            records.append({
+                "symbol": sym,
+                "universe_version": UNIVERSE_NAME,
+                "snapshot_timestamp": snapshot_date.strftime("%Y-%m-%d")
+            })
+        df = pd.DataFrame(records)
+        path = SNAPSHOT_DIR / f"universe_{snapshot_date.strftime('%Y%m%d')}.csv"
+        df.to_csv(path, index=False)
+
     def step(self, current_date: pd.Timestamp, day_data: dict, prev_day_data: dict = None):
         if current_date <= self.current_date:
             # Idempotent protection: Do not process the same or older dates twice
