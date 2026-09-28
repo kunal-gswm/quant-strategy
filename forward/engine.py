@@ -11,7 +11,7 @@ import os
 from forward.config import get_frozen_forward_config, STRATEGY_VERSION, UNIVERSE_NAME, SURVIVORSHIP_STATUS
 from portfolio.engine import get_leg_cost
 
-RESULTS_DIR = Path(os.environ.get("FORWARD_RESULTS_DIR", "d:/stratergy/results/forward"))
+RESULTS_DIR = Path(os.environ.get("FORWARD_RESULTS_DIR", "./results/forward"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 SNAPSHOT_DIR = RESULTS_DIR / "forward_universe_snapshots"
 SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)

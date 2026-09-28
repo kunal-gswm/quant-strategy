@@ -3,12 +3,12 @@ from pathlib import Path
 
 def main():
     try:
-        baseline = pd.read_csv("d:/stratergy/expanded_trades.csv")
-        test_trades = pd.read_csv("d:/stratergy/results/walk_forward_test_trades.csv")
-        oos_metrics = pd.read_csv("d:/stratergy/results/walk_forward_oos_metrics.csv").iloc[0]
-        port_metrics = pd.read_csv("d:/stratergy/results/walk_forward_oos_portfolio.csv").iloc[0]
-        sens = pd.read_csv("d:/stratergy/results/walk_forward_oos_cost_sensitivity_v2.csv")
-        mc = pd.read_csv("d:/stratergy/results/walk_forward_oos_monte_carlo_v2.csv").iloc[0]
+        baseline = pd.read_csv("./expanded_trades.csv")
+        test_trades = pd.read_csv("./results/walk_forward_test_trades.csv")
+        oos_metrics = pd.read_csv("./results/walk_forward_oos_metrics.csv").iloc[0]
+        port_metrics = pd.read_csv("./results/walk_forward_oos_portfolio.csv").iloc[0]
+        sens = pd.read_csv("./results/walk_forward_oos_cost_sensitivity_v2.csv")
+        mc = pd.read_csv("./results/walk_forward_oos_monte_carlo_v2.csv").iloc[0]
         
         print("WALK-FORWARD AUDIT\n")
         print(f"Full baseline trades: {len(baseline)}")

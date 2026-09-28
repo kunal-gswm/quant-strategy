@@ -3,7 +3,7 @@ import pytest
 from pathlib import Path
 import numpy as np
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 
 def test_equity_equals_cash_plus_market_value():
     df = pd.read_csv(RESULTS_DIR / "oos_continuous_equity_curve.csv")

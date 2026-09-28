@@ -8,10 +8,10 @@ from portfolio.engine import simulate_portfolio, calculate_portfolio_metrics
 from run_final_validation import ensure_baseline, compute_all_possible_trades, run_monte_carlo_random_control
 from analysis.monte_carlo import run_monte_carlo
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 
 def get_baseline():
-    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline_trades = pd.read_csv("./expanded_trades.csv")
     from data.loader import DataLoader
     loader = DataLoader(use_cache=True)
     universe = baseline_trades["symbol"].unique()

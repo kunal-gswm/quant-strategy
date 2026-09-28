@@ -5,7 +5,7 @@ from config import BacktestConfig
 from fix_walk_forward import load_data
 from portfolio.engine import simulate_portfolio, calculate_portfolio_metrics
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 
 WALK_FORWARD_WINDOWS = [
     {"test_year": 2021, "start": "2021-01-01", "end": "2021-12-31"},
@@ -17,7 +17,7 @@ WALK_FORWARD_WINDOWS = [
 
 def main():
     cfg = BacktestConfig()
-    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline_trades = pd.read_csv("./expanded_trades.csv")
     baseline_trades["entry_timestamp"] = pd.to_datetime(baseline_trades["entry_timestamp"])
     baseline_trades["exit_timestamp"] = pd.to_datetime(baseline_trades["exit_timestamp"])
     

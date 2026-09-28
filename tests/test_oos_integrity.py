@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 
 def test_no_entry_based_oos_trade_has_entry_before_test_period():
     df = pd.read_csv(RESULTS_DIR / "walk_forward_boundary_trades.csv")

@@ -8,7 +8,7 @@ def main():
         {"metric": "Historical ticker changes handled", "value": "NO", "notes": "Yahoo Finance data does not robustly map old tickers"},
         {"metric": "Most affected years", "value": "2018-2020", "notes": "The further back in time, the higher the distortion due to companies that delisted before 2025"}
     ]
-    pd.DataFrame(rows).to_csv("d:/stratergy/results/survivorship_bias_audit.csv", index=False)
+    pd.DataFrame(rows).to_csv("./results/survivorship_bias_audit.csv", index=False)
 
 if __name__ == "__main__":
     main()

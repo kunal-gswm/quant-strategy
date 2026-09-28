@@ -1,13 +1,13 @@
 import pandas as pd
 
 def main():
-    m_entry = pd.read_csv("d:/stratergy/results/oos_entry_based_metrics.csv").iloc[0]
-    m_exit = pd.read_csv("d:/stratergy/results/oos_exit_based_metrics.csv").iloc[0]
-    m_port = pd.read_csv("d:/stratergy/results/oos_continuous_portfolio_metrics.csv").iloc[0]
-    acct_df = pd.read_csv("d:/stratergy/results/oos_fold_reconciliation.csv")
-    rc_df = pd.read_csv("d:/stratergy/results/oos_randomization_comparison.csv").iloc[0]
+    m_entry = pd.read_csv("./results/oos_entry_based_metrics.csv").iloc[0]
+    m_exit = pd.read_csv("./results/oos_exit_based_metrics.csv").iloc[0]
+    m_port = pd.read_csv("./results/oos_continuous_portfolio_metrics.csv").iloc[0]
+    acct_df = pd.read_csv("./results/oos_fold_reconciliation.csv")
+    rc_df = pd.read_csv("./results/oos_randomization_comparison.csv").iloc[0]
     
-    with open("d:/stratergy/results/OOS_AND_SURVIVORSHIP_FINAL_AUDIT.md", "w", encoding="utf-8") as f:
+    with open("./results/OOS_AND_SURVIVORSHIP_FINAL_AUDIT.md", "w", encoding="utf-8") as f:
         f.write("# FINAL AUDIT: Walk-Forward Portfolio Boundary Reconciliation\n\n")
         f.write("## Strategy Specification\n")
         f.write("*Unchanged.* The underlying technical strategy remains completely frozen (EMA 50, EMA slope 5, RSI 14, RSI reclaim 40, ATR 14, Stop 1.5 ATR, Target 2R, Long only, Next open entry).\n\n")

@@ -2,7 +2,7 @@ import pytest
 import pandas as pd
 from pathlib import Path
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 
 def test_training_trades_excluded_from_oos():
     integrity = pd.read_csv(RESULTS_DIR / "walk_forward_integrity.csv")
@@ -28,7 +28,7 @@ def test_each_oos_trade_belongs_to_exactly_one_fold():
     assert not duplicates.any(), "Duplicate trades found across folds!"
 
 def test_full_baseline_not_used_as_oos():
-    baseline = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline = pd.read_csv("./expanded_trades.csv")
     test_trades = pd.read_csv(RESULTS_DIR / "walk_forward_test_trades.csv")
     assert len(test_trades) < len(baseline), "Test trades are equal to baseline trades! Full baseline was used as OOS!"
 

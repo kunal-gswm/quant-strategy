@@ -4,7 +4,7 @@ import numpy as np
 from pathlib import Path
 
 import sys
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 from forward.session import generate_milestones
 import forward.engine
 

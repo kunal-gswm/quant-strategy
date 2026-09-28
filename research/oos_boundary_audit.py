@@ -5,7 +5,7 @@ import os
 import json
 from scipy import stats
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 WALK_FORWARD_WINDOWS = [
@@ -144,7 +144,7 @@ def calc_metrics(df):
     }
 
 def main():
-    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline_trades = pd.read_csv("./expanded_trades.csv")
     baseline_trades["entry_timestamp"] = pd.to_datetime(baseline_trades["entry_timestamp"])
     baseline_trades["exit_timestamp"] = pd.to_datetime(baseline_trades["exit_timestamp"])
     if "r_multiple" not in baseline_trades.columns:

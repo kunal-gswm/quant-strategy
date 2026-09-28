@@ -5,7 +5,7 @@ from pathlib import Path
 import os
 import sys
 
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 import forward.engine
 from forward.watchdog import check_runner_health, log_alert
 

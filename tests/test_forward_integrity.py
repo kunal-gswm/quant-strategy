@@ -5,7 +5,7 @@ from datetime import datetime
 import sys
 import json
 
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 from forward.config import get_frozen_forward_config, STRATEGY_VERSION, UNIVERSE_NAME
 from forward.engine import ForwardPaperEngine, FORWARD_START_TIMESTAMP
 

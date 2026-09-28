@@ -3,7 +3,7 @@ import pandas as pd
 from pathlib import Path
 import sys
 
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 from config import BacktestConfig
 from universe import get_universe
 from portfolio.engine import get_leg_cost
@@ -48,10 +48,10 @@ def test_existing_transaction_cost_logic_unchanged():
 
 def test_existing_portfolio_accounting_unchanged():
     # Verify that the outputs from the previous phase still exist and match
-    reconciliation = pd.read_csv("d:/stratergy/results/historical/oos_fold_reconciliation.csv")
+    reconciliation = pd.read_csv("./results/historical/oos_fold_reconciliation.csv")
     assert (reconciliation["status"] == "PASS").all()
 
 def test_current_universe_results_reproducible():
-    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline_trades = pd.read_csv("./expanded_trades.csv")
     assert len(baseline_trades) > 100
     assert "net_pnl" in baseline_trades.columns

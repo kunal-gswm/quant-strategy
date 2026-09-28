@@ -4,7 +4,7 @@ from pathlib import Path
 import json
 import sys
 
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 from forward.engine import ForwardPaperEngine, FORWARD_START_TIMESTAMP
 from forward.config import STRATEGY_VERSION
 from forward.session import run_forward_session

@@ -8,7 +8,7 @@ from data.loader import DataLoader
 from portfolio.engine import simulate_portfolio, calculate_portfolio_metrics
 from analysis.monte_carlo import run_monte_carlo
 
-RESULTS_DIR = Path("d:/stratergy/results/historical")
+RESULTS_DIR = Path("./results/historical")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
 WALK_FORWARD_WINDOWS = [
@@ -32,7 +32,7 @@ def load_data(universe):
 
 def main():
     # Load all trades (baseline)
-    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    baseline_trades = pd.read_csv("./expanded_trades.csv")
     baseline_trades["exit_timestamp"] = pd.to_datetime(baseline_trades["exit_timestamp"])
     baseline_trades["entry_timestamp"] = pd.to_datetime(baseline_trades["entry_timestamp"])
     

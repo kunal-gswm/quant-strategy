@@ -6,10 +6,10 @@ def get_str(x):
 
 def main():
     try:
-        baseline = pd.read_csv("d:/stratergy/expanded_trades.csv")
-        metrics = pd.read_csv("d:/stratergy/results/portfolio_metrics_corrected_v2.csv", index_col=0)
-        mc = pd.read_csv("d:/stratergy/results/monte_carlo_results_v2.csv").iloc[0]
-        sens = pd.read_csv("d:/stratergy/results/walk_forward_cost_sensitivity_v2.csv")
+        baseline = pd.read_csv("./expanded_trades.csv")
+        metrics = pd.read_csv("./results/portfolio_metrics_corrected_v2.csv", index_col=0)
+        mc = pd.read_csv("./results/monte_carlo_results_v2.csv").iloc[0]
+        sens = pd.read_csv("./results/walk_forward_cost_sensitivity_v2.csv")
         
         trades_count = len(baseline)
         wins = len(baseline[baseline["net_pnl"] > 0])

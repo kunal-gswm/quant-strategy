@@ -35,7 +35,7 @@ def main():
         if st.button("Refresh Data"):
             st.rerun()
             
-    dl = DataLoader(str(RESULTS_DIR), "d:/stratergy/results/historical")
+    dl = DataLoader(str(RESULTS_DIR), "./results/historical")
     
     tabs = st.tabs(["Today's Signals", "Open Positions", "Strategy Health", "Failure Conditions", "Historical Research", "System Health"])
     

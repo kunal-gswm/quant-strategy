@@ -3,16 +3,16 @@ from pathlib import Path
 
 def main():
     import sys
-    sys.path.append("d:/stratergy")
+    sys.path.append(".")
     from universe import get_universe
     
-    RESULTS_DIR = Path("d:/stratergy/results/historical")
+    RESULTS_DIR = Path("./results/historical")
     RESULTS_DIR.mkdir(parents=True, exist_ok=True)
     
     current_universe = get_universe()
     num_current = len(current_universe)
     
-    trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    trades = pd.read_csv("./expanded_trades.csv")
     trades["entry_timestamp"] = pd.to_datetime(trades["entry_timestamp"])
     trades["year"] = trades["entry_timestamp"].dt.year
     

@@ -5,7 +5,7 @@ from pathlib import Path
 from unittest.mock import patch, MagicMock
 
 import sys
-sys.path.append("d:/stratergy")
+sys.path.append(".")
 from forward.runner import fetch_and_prepare_data, run_daily
 from forward.config import get_frozen_forward_config
 import forward.engine
