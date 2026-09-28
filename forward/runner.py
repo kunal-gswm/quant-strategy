@@ -155,7 +155,43 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
         })
     pd.DataFrame(records).to_csv(forward.engine.RESULTS_DIR / "forward_universe_health.csv", mode='a', header=not (forward.engine.RESULTS_DIR / "forward_universe_health.csv").exists(), index=False)
     
-    return day_data, prev_day_data, max_data_ts, len(symbols_expected), len(symbols_processed), len(symbols_failed), symbol_health
+    expected_delay = (execution_timestamp.normalize().dayofweek >= 5) or (execution_timestamp.hour < 15)
+    
+    # Run SignalScanner to populate the ledger with VALID signals
+    from scanner.signal_scanner import SignalScanner
+    from forward.engine import ForwardPaperEngine
+    
+    temp_engine = ForwardPaperEngine()
+    current_equity = temp_engine.cash
+    if len(temp_engine.active_positions) > 0:
+        current_equity += sum(p["last_price"] * p["qty"] for p in temp_engine.active_positions)
+        
+    scanner = SignalScanner(end_date, equity=current_equity)
+    raw_universe = {}
+    for sym in symbols_processed:
+        if len(symbols_expected) == 1:
+            raw_universe[sym] = data.copy()
+        else:
+            raw_universe[sym] = data[sym].copy()
+            
+    signals = scanner.scan_universe(raw_universe, expected_delay)
+    
+    sig_path = RESULTS_DIR / "forward_signals.csv"
+    if signals:
+        existing_ids = set()
+        if sig_path.exists():
+            existing_df = pd.read_csv(sig_path)
+            existing_ids = set(existing_df["signal_id"].tolist() if "signal_id" in existing_df.columns else existing_df["trade_id"].tolist())
+            
+        new_records = []
+        for s in signals:
+            if s.signal_id not in existing_ids:
+                new_records.append(s.to_dict())
+                
+        if new_records:
+            pd.DataFrame(new_records).to_csv(sig_path, mode='a', header=not sig_path.exists(), index=False)
+            
+    return day_data, {}, max_data_ts, len(symbols_expected), len(symbols_processed), len(symbols_failed), symbol_health
 
 def generate_monthly_report(current_date: pd.Timestamp):
     trades_path = RESULTS_DIR / "forward_trades.csv"

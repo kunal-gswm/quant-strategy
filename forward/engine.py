@@ -40,8 +40,8 @@ class ForwardPaperEngine:
         if (RESULTS_DIR / "forward_signals.csv").exists():
             sigs = pd.read_csv(RESULTS_DIR / "forward_signals.csv").to_dict('records')
             self.signals_log = sigs
-            # Active signals are those marked ENTRY_PENDING
-            self.active_signals = [s for s in sigs if s["signal_status"] == "ENTRY_PENDING"]
+            # Active signals are those marked ENTRY_PENDING or VALID
+            self.active_signals = [s for s in sigs if s["signal_status"] in ("ENTRY_PENDING", "VALID")]
             
         if (RESULTS_DIR / "forward_trades.csv").exists():
             self.trades_log = pd.read_csv(RESULTS_DIR / "forward_trades.csv").to_dict('records')
@@ -149,10 +149,18 @@ class ForwardPaperEngine:
                 slippage = entry_price * (self.cfg.execution.slippage_value / 100.0)
                 actual_entry_price = entry_price + slippage
                 
-                risk_per_share = actual_entry_price - sig["planned_stop"]
+                planned_stop = sig.get("stop_loss", sig.get("planned_stop"))
+                planned_target = sig.get("target", sig.get("planned_target"))
+                sig_id = sig.get("signal_id", sig.get("trade_id"))
+                
+                risk_per_share = actual_entry_price - planned_stop
                 if risk_per_share > 0 and len(self.active_positions) < self.max_positions:
-                    risk_budget = current_equity * self.risk_pct
-                    qty = math.floor(risk_budget / risk_per_share)
+                    
+                    if "position_size" in sig and sig["position_size"] > 0:
+                        qty = sig["position_size"]
+                    else:
+                        risk_budget = current_equity * self.risk_pct
+                        qty = math.floor(risk_budget / risk_per_share)
                     
                     cost_est = qty * actual_entry_price
                     buy_cost = get_leg_cost(cost_est, True, self.cfg.cost_model)
@@ -161,15 +169,15 @@ class ForwardPaperEngine:
                         self.cash -= (cost_est + buy_cost)
                         
                         pos = {
-                            "trade_id": sig["trade_id"],
+                            "trade_id": sig_id,
                             "symbol": sym,
                             "signal_timestamp": sig["signal_timestamp"],
                             "entry_timestamp": current_date.strftime("%Y-%m-%d"),
-                            "planned_entry": sig["planned_entry"],
+                            "planned_entry": sig.get("planned_entry"),
                             "actual_entry": actual_entry_price,
                             "qty": qty,
-                            "stop_price": sig["planned_stop"],
-                            "target_price": sig["planned_target"],
+                            "stop_price": planned_stop,
+                            "target_price": planned_target,
                             "buy_cost": float(buy_cost),
                             "trade_value_buy": float(cost_est),
                             "last_price": float(bar["Close"]),
@@ -183,7 +191,7 @@ class ForwardPaperEngine:
                 else:
                     sig["signal_status"] = "CANCELLED" # REJECTED_RISK
                     
-                self._update_signal_status(sig["trade_id"], sig["signal_status"])
+                self._update_signal_status(sig_id, sig["signal_status"])
             else:
                 # Keep active if no data today
                 remaining_signals.append(sig)
@@ -300,7 +308,7 @@ class ForwardPaperEngine:
     def _update_signal_status(self, trade_id, new_status):
         # We must rewrite the signals csv entirely to update status
         for s in self.signals_log:
-            if s["trade_id"] == trade_id:
+            if s.get("signal_id", s.get("trade_id")) == trade_id:
                 s["signal_status"] = new_status
         pd.DataFrame(self.signals_log).to_csv(RESULTS_DIR / "forward_signals.csv", index=False)
 
