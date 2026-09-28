@@ -52,6 +52,12 @@ jobs:
         run: |
           python -m forward.validate_outputs
 
+      - name: Generate daily journal
+        env:
+          PYTHONPATH: ${{ github.workspace }}
+        run: |
+          python -m forward.journal_generator
+
       - name: Persist forward state
         run: |
           git config --global user.name "github-actions[bot]"
