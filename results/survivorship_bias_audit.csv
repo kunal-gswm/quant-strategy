@@ -1,0 +1,6 @@
+metric,value,notes
+Historical constituents available,NO,No point-in-time NSE membership data
+Delisted/Suspended stocks included,NO,Only currently active stocks are listed in universe.py
+Current Active Stocks in Universe,180,"From universe.py (approximate, actual available varies by cache)"
+Historical ticker changes handled,NO,Yahoo Finance data does not robustly map old tickers
+Most affected years,2018-2020,"The further back in time, the higher the distortion due to companies that delisted before 2025"
