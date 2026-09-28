@@ -6,10 +6,12 @@ import math
 import uuid
 import json
 
+import os
+
 from forward_config import get_frozen_forward_config, STRATEGY_VERSION, UNIVERSE_NAME, SURVIVORSHIP_STATUS
 from portfolio_engine import get_leg_cost
 
-RESULTS_DIR = Path("d:/stratergy/results")
+RESULTS_DIR = Path(os.environ.get("FORWARD_RESULTS_DIR", "d:/stratergy/results"))
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 SNAPSHOT_DIR = RESULTS_DIR / "forward_universe_snapshots"
 SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
