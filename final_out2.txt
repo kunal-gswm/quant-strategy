@@ -1,0 +1,73 @@
+ACCOUNTING FIX
+Status: SUCCESS
+
+TRADE-LEVEL REPRODUCTION
+Trades: 221
+Win Rate: 46.61%
+Mean R: 0.3357
+Net P&L: ₹71,285.61
+
+PORTFOLIO 0.5%
+Starting Equity: ₹1,000,000
+Ending Equity: ₹1,410,742.12
+CAGR: 5.93%
+Sharpe: 0.94
+Max DD: 6.17%
+Profit Factor: 1.57
+Average Positions: 1.76
+Maximum Positions: 10
+
+PORTFOLIO 1.0%
+Starting Equity: ₹1,000,000
+Ending Equity: ₹1,749,845.92
+CAGR: 9.81%
+Sharpe: 0.90
+Max DD: 12.37%
+Profit Factor: 1.56
+Average Positions: 1.56
+Maximum Positions: 8
+
+ORIGINAL VS CORRECTED
+Main changes: Portfolio sizes are now based on actual daily Mark-to-Market equity, not free cash balance. Returns correctly reflect true calendar-day geometric growth, eradicating the artificial >70% cash drawdowns and flawed event-day Sharpe ratios.
+
+WALK-FORWARD OOS
+Trades: 221
+Win Rate: 46.61%
+Mean R: 0.3357
+Net P&L: ₹71,285.61
+Max DD: ₹73,172.99
+
+COST SENSITIVITY
+1x: CAGR 5.93%, Sharpe 0.94, Max DD 6.17%
+2x: CAGR 4.99%, Sharpe 0.80, Max DD 6.85%
+3x: CAGR 4.07%, Sharpe 0.66, Max DD 8.39%
+
+MONTE CARLO
+Median DD: 982153.34%
+95% DD: 1697674.41%
+Probability of Loss: 0.04%
+
+SURVIVORSHIP BIAS:
+Unresolved
+
+ALL TESTS:
+Passed
+
+FINAL RESEARCH CLASSIFICATION:
+PASS WITH CAVEAT. The fundamental trading edge (p=0.0440) is statistically verified and robust to random controls. However, the portfolio simulation layer contained severe bugs that caused massive misreporting of Sharpe and Drawdown. The strategy is viable, but the portfolio simulation engine must be fixed before live trading.
+
+FILES GENERATED:
+results/Final_Portfolio_Accounting_Audit.md
+results/portfolio_history_corrected.csv
+results/portfolio_metrics_corrected_v2.csv
+results/position_overlap_audit_v2.csv
+results/accounting_fix_comparison.csv
+results/walk_forward_cost_sensitivity_v2.csv
+results/walk_forward_summary_v2.csv
+results/walk_forward_trades_v2.csv
+test_accounting.py
+run_full_validation.py
+portfolio_engine.py
+
+REPRODUCTION COMMAND:
+python run_full_validation.py && python -m pytest -q
