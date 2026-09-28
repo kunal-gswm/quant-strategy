@@ -65,11 +65,11 @@ def generate_daily_journal(current_date: datetime = None, session_result: str = 
     
     # Determine failure statuses
     def get_alert_status(cond_name):
-        if todays_alerts.empty:
+        if todays_alerts.empty or 'description' not in todays_alerts.columns:
             return "OK"
-        matches = todays_alerts[todays_alerts['condition'] == cond_name]
+        matches = todays_alerts[todays_alerts['description'].str.contains(cond_name, na=False)]
         if not matches.empty:
-            return "TRIGGERED" if matches.iloc[-1]['status'] == "FAILED" else "OK"
+            return "TRIGGERED" if matches.iloc[-1]['resolution_status'] != "RESOLVED" else "OK"
         return "OK"
 
     exp_r_status = get_alert_status("EXPECTANCY_R_LT_0")
