@@ -82,22 +82,6 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
                 "failure_classification": "AVAILABLE"
             }
                 
-            # Calculate indicators
-            df["EMA"] = wilder_style_ema(df["Close"], cfg.ema_period)
-            df["EMA_slope"] = df["EMA"].diff(cfg.slope_bars)
-            df["RSI"] = wilder_rsi(df["Close"], cfg.rsi_period)
-            
-            df_lower = df.rename(columns={"High": "high", "Low": "low", "Close": "close"})
-            df["ATR"] = wilder_atr(df_lower, cfg.atr_period)
-            
-            df["RSI_prev"] = df["RSI"].shift(1)
-            df["signal"] = (
-                (df["Close"] > df["EMA"]) &
-                (df["EMA_slope"] > 0) &
-                (df["RSI_prev"] < cfg.rsi_reclaim_level) &
-                (df["RSI"] >= cfg.rsi_reclaim_level)
-            )
-            
             if end_date in df.index:
                 row_today = df.loc[end_date]
                 day_data[sym] = {
@@ -107,23 +91,6 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
                     "Close": float(row_today["Close"]),
                     "Volume": float(row_today["Volume"])
                 }
-                
-                prev_dates = df.index[df.index < end_date]
-                if len(prev_dates) > 0:
-                    prev_date = prev_dates[-1]
-                    row_prev = df.loc[prev_date]
-                    prev_day_data[sym] = {
-                        "date": prev_date.strftime("%Y-%m-%d"),
-                        "Open": float(row_prev["Open"]),
-                        "High": float(row_prev["High"]),
-                        "Low": float(row_prev["Low"]),
-                        "Close": float(row_prev["Close"]),
-                        "EMA": float(row_prev["EMA"]),
-                        "EMA_slope": float(row_prev["EMA_slope"]),
-                        "RSI": float(row_prev["RSI"]),
-                        "ATR": float(row_prev["ATR"]),
-                        "signal": bool(row_prev["signal"])
-                    }
         except Exception as e:
             logging.error(f"Error processing {sym}: {e}")
             symbols_failed.append(sym)

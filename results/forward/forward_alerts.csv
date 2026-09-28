@@ -1,0 +1,2 @@
+timestamp,severity,category,description,affected_session,resolution_status
+2026-09-29 02:10:35,WARNING,DATA,"MISSING data for symbols: LTIM.NS,TATAMOTORS.NS,TVSMOTORS.NS,SUVENPHAR.NS",2026-09-29,OPEN
