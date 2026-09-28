@@ -25,6 +25,7 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
     symbols_expected = [u["symbol"] for u in universe]
     logging.info(f"Fetching data for {len(symbols_expected)} symbols from {start_date.date()} to {end_date.date()}")
     
+    # Download data
     data = yf.download(symbols_expected, start=start_date.strftime("%Y-%m-%d"), end=(end_date + timedelta(days=1)).strftime("%Y-%m-%d"), group_by='ticker', auto_adjust=False, progress=False)
     
     day_data = {}
@@ -35,6 +36,9 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
     symbols_processed = []
     symbols_failed = []
     max_data_ts = pd.Timestamp("1970-01-01")
+    execution_timestamp = pd.Timestamp.now()
+    
+    symbol_health = {}
     
     for sym in symbols_expected:
         try:
@@ -42,12 +46,24 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
                 df = data.copy()
             else:
                 if sym not in data.columns.levels[0]:
+                    symbol_health[sym] = {
+                        "status": "DOWNLOAD_ERROR",
+                        "data_timestamp": pd.NaT,
+                        "data_age_hours": float('inf'),
+                        "failure_classification": "YAHOO_TICKER_MAPPING_FAILURE"
+                    }
                     symbols_failed.append(sym)
                     continue
                 df = data[sym].copy()
                 
             df = df.dropna(subset=["Close"])
             if df.empty:
+                symbol_health[sym] = {
+                    "status": "NO_DATA",
+                    "data_timestamp": pd.NaT,
+                    "data_age_hours": float('inf'),
+                    "failure_classification": "NO_DATA"
+                }
                 symbols_failed.append(sym)
                 continue
                 
@@ -58,6 +74,13 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
             last_dt = df.index[-1]
             if last_dt > max_data_ts:
                 max_data_ts = last_dt
+                
+            symbol_health[sym] = {
+                "status": "FRESH", # To be updated later
+                "data_timestamp": last_dt,
+                "data_age_hours": (execution_timestamp.normalize() - last_dt).total_seconds() / 3600.0,
+                "failure_classification": "AVAILABLE"
+            }
                 
             # Calculate indicators
             df["EMA"] = wilder_style_ema(df["Close"], cfg.ema_period)
@@ -105,22 +128,34 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
             logging.error(f"Error processing {sym}: {e}")
             symbols_failed.append(sym)
             
-    # Record universe health with failure classifications
-    failure_classifications = {sym: classify_symbol_failure(None) for sym in symbols_processed}
-    for sym in symbols_failed:
-        failure_classifications[sym] = "YAHOO_TICKER_MAPPING_FAILURE"  # Default; actual msg not captured here
-
-    uni_health = {
-        "date": end_date.strftime("%Y-%m-%d"),
-        "symbols_expected": len(symbols_expected),
-        "symbols_processed": len(symbols_processed),
-        "symbols_failed": len(symbols_failed),
-        "missing_symbols": ",".join(symbols_failed),
-        "failure_classifications": ",".join(f"{s}:{failure_classifications[s]}" for s in symbols_failed)
-    }
-    pd.DataFrame([uni_health]).to_csv(forward_engine.RESULTS_DIR / "forward_universe_health.csv", mode='a', header=not (forward_engine.RESULTS_DIR / "forward_universe_health.csv").exists(), index=False)
+    # Evaluate symbol freshness based on max_data_ts
+    for sym, health in symbol_health.items():
+        if health["status"] == "FRESH":
+            if health["data_timestamp"] < max_data_ts:
+                health["status"] = "STALE"
+                health["failure_classification"] = "UNRESOLVED"
+            else:
+                health["failure_classification"] = "AVAILABLE"
+                
+    # Record universe health (per-symbol)
+    records = []
+    # Generate a unique session_id just for this log if needed, but we can just use date
+    for sym in symbols_expected:
+        h = symbol_health.get(sym, {"status": "UNKNOWN", "data_timestamp": pd.NaT, "data_age_hours": 0.0, "failure_classification": "UNKNOWN"})
+        records.append({
+            "session_id": execution_timestamp.strftime("%Y%m%d_%H%M%S"),
+            "market_date": end_date.strftime("%Y-%m-%d"),
+            "symbol": sym,
+            "expected": 1,
+            "processed": 1 if sym in symbols_processed else 0,
+            "data_timestamp": h["data_timestamp"].strftime("%Y-%m-%d") if pd.notna(h["data_timestamp"]) else "N/A",
+            "data_age_hours": round(h["data_age_hours"], 2),
+            "freshness_status": h["status"],
+            "failure_classification": h["failure_classification"]
+        })
+    pd.DataFrame(records).to_csv(forward_engine.RESULTS_DIR / "forward_universe_health.csv", mode='a', header=not (forward_engine.RESULTS_DIR / "forward_universe_health.csv").exists(), index=False)
     
-    return day_data, prev_day_data, max_data_ts, len(symbols_expected), len(symbols_processed), len(symbols_failed)
+    return day_data, prev_day_data, max_data_ts, len(symbols_expected), len(symbols_processed), len(symbols_failed), symbol_health
 
 def generate_monthly_report(current_date: pd.Timestamp):
     trades_path = RESULTS_DIR / "forward_trades.csv"
@@ -211,13 +246,47 @@ def run_daily():
         return
     
     universe = get_universe()
-    day_data, prev_day_data, max_data_ts, syms_exp, syms_proc, syms_fail = fetch_and_prepare_data(universe, today)
+    day_data, prev_day_data, max_data_ts, syms_exp, syms_proc, syms_fail, symbol_health = fetch_and_prepare_data(universe, today)
     
+    # Evaluate aggregate session freshness
+    statuses = [h["status"] for h in symbol_health.values()]
+    has_stale = "STALE" in statuses
+    has_missing = "NO_DATA" in statuses or "DOWNLOAD_ERROR" in statuses
+    all_stale = len(statuses) > 0 and all(s == "STALE" for s in statuses)
+    
+    is_weekend = today.dayofweek >= 5
+    is_premarket = execution_timestamp.hour < 15
+    expected_delay = is_weekend or is_premarket
+    
+    max_data_age = (execution_timestamp - max_data_ts).total_seconds() / 3600.0 if max_data_ts != pd.Timestamp("1970-01-01") else float('inf')
+    
+    aggregate_freshness = "ALL_FRESH"
+    if len(statuses) == 0:
+        aggregate_freshness = "NO_DATA"
+    elif max_data_age > 24 and not expected_delay:
+        aggregate_freshness = "DATA_DELAY"
+    elif all_stale:
+        aggregate_freshness = "DATA_DELAY"
+    elif has_stale:
+        aggregate_freshness = "PARTIAL_STALE"
+    elif has_missing:
+        aggregate_freshness = "PARTIAL_MISSING"
+        
     status = "SUCCESS"
     reason = ""
-    data_age = (execution_timestamp - max_data_ts).total_seconds() / 60.0 if max_data_ts != pd.Timestamp("1970-01-01") else 0
+    data_age_min = max_data_age * 60
     
-    if data_age > 1440: # 24 hours
+    from forward_watchdog import log_alert
+    # Watchdog alerts for symbol-level issues
+    stale_syms = [sym for sym, h in symbol_health.items() if h["status"] == "STALE"]
+    missing_syms = [sym for sym, h in symbol_health.items() if h["status"] in ["NO_DATA", "DOWNLOAD_ERROR"]]
+    
+    if len(stale_syms) > 0 and not expected_delay:
+        log_alert("WARNING", "DATA", f"STALE data for symbols: {','.join(stale_syms[:5])}", today.strftime("%Y-%m-%d"))
+    if len(missing_syms) > 0:
+        log_alert("WARNING", "DATA", f"MISSING data for symbols: {','.join(missing_syms[:5])}", today.strftime("%Y-%m-%d"))
+        
+    if aggregate_freshness == "DATA_DELAY":
         status = "DATA_DELAY"
     
     res = {}
@@ -229,9 +298,8 @@ def run_daily():
             reason = "Expected: Market not closed"
             status = "NO_MARKET_DATA"
         else:
-            reason = "Unexpected: Missing data"
-            status = "NO_MARKET_DATA"
-            from forward_watchdog import log_alert
+            reason = "Unexpected: Missing data (DATA_DELAY)" if aggregate_freshness == "DATA_DELAY" else "Unexpected: Missing data"
+            status = "DATA_DELAY" if aggregate_freshness == "DATA_DELAY" else "NO_MARKET_DATA"
             log_alert("WARNING", "DATA", reason, today.strftime("%Y-%m-%d"))
         logging.info(f"No market data for today. Reason: {reason}")
     else:
@@ -241,7 +309,6 @@ def run_daily():
         except Exception as e:
             status = "RUNTIME_ERROR"
             reason = str(e)
-            from forward_watchdog import log_alert
             log_alert("CRITICAL", "RUNTIME", reason, today.strftime("%Y-%m-%d"))
     
     # Run Watchdog
@@ -264,7 +331,8 @@ def run_daily():
         "symbols_processed": syms_proc,
         "symbols_failed": syms_fail,
         "data_timestamp": max_data_ts.strftime("%Y-%m-%d") if max_data_ts != pd.Timestamp("1970-01-01") else "N/A",
-        "data_age_minutes": data_age,
+        "data_age_minutes": data_age_min,
+        "aggregate_freshness": aggregate_freshness,
         "signals_generated": res.get("signals_generated", 0),
         "entries_processed": res.get("entries_executed", 0),
         "exits_processed": res.get("exits_executed", 0),
