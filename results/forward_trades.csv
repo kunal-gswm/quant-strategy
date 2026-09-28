@@ -1,0 +1,1 @@
+trade_id,symbol,signal_timestamp,entry_timestamp,entry_price,quantity,stop,target,exit_timestamp,exit_price,exit_reason,gross_pnl,transaction_costs,net_pnl,r_multiple,strategy_version
