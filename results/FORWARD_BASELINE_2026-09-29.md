@@ -17,6 +17,7 @@ Status: ACTIVE
 | First execution timestamp | 2026-09-29 00:38:29 IST |
 | Data timestamp | N/A (market not yet open) |
 | Data age | N/A |
+| Data Freshness Mechanism | Evaluated per symbol (FRESH, STALE, NO_DATA, DOWNLOAD_ERROR, UNRESOLVED) |
 | Universe expected | 184 |
 | Universe processed | 0 (market not open) |
 | Universe failed | 4 (SUVENPHAR.NS, TATAMOTORS.NS, LTIM.NS, TVSMOTORS.NS — delisted/renamed) |

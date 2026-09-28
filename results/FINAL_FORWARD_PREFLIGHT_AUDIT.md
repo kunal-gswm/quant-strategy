@@ -11,7 +11,7 @@ Status: FROZEN
 * **Python Version:** 3.14.0
 * **Scheduler:** System cron daemon (task-682)
 * **Expected Execution Time:** 16:30 IST (Mon–Fri)
-* **Git Commit:** 99b9546935eadd88b65e1432edadcdca5cc4eb9b
+* **Git Commit:** 08b83a5f15db3acabc5306dd990c947d64d1cfe1
 * **Configuration Fingerprint (SHA-256):** 1fa5372a8a97e3dea6445543c844c048d2d7257c009b595681b2f0f5fd0b5327
 
 ## Data
@@ -19,7 +19,7 @@ Status: FROZEN
 * **Universe Size:** 184 expected (CURRENT_ACTIVE_UNIVERSE)
 * **Unavailable Symbols:** 4 (SUVENPHAR.NS, TATAMOTORS.NS, LTIM.NS, TVSMOTORS.NS)
 * **Failure Classifications:** YAHOO_TICKER_MAPPING_FAILURE
-* **Data Freshness Mechanism:** max() timestamp across universe compared to execution time; >24 hours flagged as DATA_DELAY
+* **Data Freshness Mechanism:** Evaluated **per symbol**, with statuses: FRESH, STALE, NO_DATA, DOWNLOAD_ERROR, UNRESOLVED. Aggregate session status is derived from these per-symbol results.
 
 ## Isolation
 * **Test Artifacts:** All synthetic test data removed from production `results/` and moved to `results/test_artifacts_archive/` with documentation
