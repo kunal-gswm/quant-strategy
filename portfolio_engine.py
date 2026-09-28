@@ -3,13 +3,14 @@ import numpy as np
 import math
 
 def get_leg_cost(value: float, is_buy_leg: bool, cfg) -> float:
-    brokerage = value * (cfg.brokerage_value / 100.0) if getattr(cfg, 'brokerage_type', 'percentage') == "percentage" else getattr(cfg, 'brokerage_value', 0)
-    exch = value * getattr(cfg, 'exchange_transaction_charge_pct', 0) / 100.0
-    stt = value * getattr(cfg, 'stt_pct_delivery', 0) / 100.0
-    sebi = value * getattr(cfg, 'sebi_charges_per_crore', 0) / 1e7
-    stamp = value * getattr(cfg, 'stamp_duty_pct_buy_leg', 0) / 100.0 if is_buy_leg else 0.0
+    c = getattr(cfg, 'cost_model', cfg)
+    brokerage = value * (c.brokerage_value / 100.0) if getattr(c, 'brokerage_type', 'percentage') == "percentage" else getattr(c, 'brokerage_value', 0)
+    exch = value * getattr(c, 'exchange_transaction_charge_pct', 0) / 100.0
+    stt = value * getattr(c, 'stt_pct_delivery', 0) / 100.0
+    sebi = value * getattr(c, 'sebi_charges_per_crore', 0) / 1e7
+    stamp = value * getattr(c, 'stamp_duty_pct_buy_leg', 0) / 100.0 if is_buy_leg else 0.0
     gst_base = brokerage + exch + sebi
-    gst = gst_base * getattr(cfg, 'gst_pct', 0) / 100.0
+    gst = gst_base * getattr(c, 'gst_pct', 0) / 100.0
     return brokerage + exch + stt + sebi + stamp + gst
 
 def compute_trade_costs(trade_value_buy: float, trade_value_sell: float, cfg) -> float:
@@ -89,7 +90,10 @@ def simulate_portfolio(trades, prepared_data, cfg, initial_capital=1_000_000, ri
             sym = pos["symbol"]
             df = prepared_data.get(sym)
             if df is not None and current_date in df.index:
-                curr_price = df.loc[current_date, "Close"]
+                if "Close" in df.columns:
+                    curr_price = df.loc[current_date, "Close"]
+                else:
+                    curr_price = df.loc[current_date, "close"]
                 pos["last_price"] = curr_price
             else:
                 curr_price = pos["last_price"]

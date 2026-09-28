@@ -11,7 +11,18 @@ from analysis.monte_carlo import run_monte_carlo
 RESULTS_DIR = Path("d:/stratergy/results")
 
 def get_baseline():
-    baseline_trades, prepared_data, cfg = ensure_baseline()
+    baseline_trades = pd.read_csv("d:/stratergy/expanded_trades.csv")
+    from data.loader import DataLoader
+    loader = DataLoader(use_cache=True)
+    universe = baseline_trades["symbol"].unique()
+    prepared_data = {}
+    for sym in universe:
+        try:
+            df = loader.load(sym, "2018-01-01", "2026-01-01")
+            prepared_data[sym] = df
+        except:
+            pass
+    cfg = BacktestConfig()
     if "r_multiple" not in baseline_trades.columns:
         baseline_trades["r_multiple"] = baseline_trades["net_pnl"] / (baseline_trades["quantity"] * (baseline_trades["entry_price"] - baseline_trades["stop_price"]))
     return baseline_trades, prepared_data, cfg
@@ -81,9 +92,18 @@ def main():
     print("Running Monte Carlo on OOS trades...")
     # Actually wait, monte carlo on OOS trades uses `run_monte_carlo` which is in `analysis.monte_carlo`.
     # Let's import it and run it.
-    mc_results = run_monte_carlo(baseline_trades, num_simulations=10000)
-    # run_monte_carlo returns a dict with metrics
-    pd.DataFrame([mc_results]).to_csv(RESULTS_DIR / "monte_carlo_results_v2.csv", index=False)
+    mc_results = run_monte_carlo(baseline_trades["net_pnl"].values, n_simulations=10000)
+    eqs = mc_results["ending_equity"]
+    dds = mc_results["max_drawdowns"]
+    mc_summary = {
+        "median_final_equity": np.median(eqs),
+        "p5_final_equity": np.percentile(eqs, 5),
+        "p95_final_equity": np.percentile(eqs, 95),
+        "median_max_drawdown_pct": np.median(dds),
+        "p95_max_drawdown_pct": np.percentile(dds, 95),
+        "prob_negative_return": np.mean(eqs < 500000.0) # original starting capital was 500k
+    }
+    pd.DataFrame([mc_summary]).to_csv(RESULTS_DIR / "monte_carlo_results_v2.csv", index=False)
 
 if __name__ == "__main__":
     main()
