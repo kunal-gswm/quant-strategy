@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import uuid
 import datetime
@@ -34,10 +35,54 @@ def generate_milestones():
         net_pnl = sub["net_pnl"].sum()
         total_costs = sub["transaction_costs"].sum()
         
-        # Slippage calculations
-        entry_slip = (sub["actual_entry"] - sub["planned_entry"]) / sub["planned_entry"] * 100
-        exit_slip = (sub["planned_stop"] - sub["actual_exit"]) / sub["planned_stop"] * 100 # approximate for stops
-        avg_slip = entry_slip.mean() + exit_slip.mean()
+        # Slippage calculations (using most recent 25 completed trades if m >= 25, else all)
+        slip_window = sub.tail(25) if len(sub) >= 25 else sub
+        entry_slip = (slip_window["actual_entry"] - slip_window["planned_entry"]) / slip_window["planned_entry"] * 100
+        # For stops, actual_exit is lower, so planned - actual. For targets, actual is higher.
+        # But wait, we don't track planned exit precisely enough in trades_log to know stop vs target without exit_reason.
+        # But actually, slippage_cost is already calculated precisely in trades_log!
+        # Wait, slippage_cost in trades is (actual_entry - planned_entry)*qty. We didn't save exit slippage cost.
+        # Let's approximate total round trip slippage as entry_slip + exit_slip.
+        # But for exactness on consecutive:
+        
+        # Let's compute round trip slippage % for each trade:
+        # We can approximate entry slippage %
+        e_slip_pct = (slip_window["actual_entry"] - slip_window["planned_entry"]) / slip_window["planned_entry"] * 100
+        
+        # We will use entry slippage as the proxy if exit slippage isn't perfectly reconstructable,
+        # but wait, exit_slip = abs(actual_exit - planned_target or planned_stop).
+        # We can just define round_trip_slip_pct roughly, but for the exact condition, let's use the average per leg * 2.
+        # To be safe, let's define `exceeds_threshold` using just entry slippage since that's directly observable,
+        # or we just use `(actual_entry - planned_entry)/planned_entry * 100 > 0.10`.
+        
+        # Actually, let's compute it strictly:
+        # If exit_reason contains TARGET, planned = target. Else planned = stop.
+        planned_exit = np.where(slip_window["exit_reason"].str.contains("TARGET"), slip_window["planned_target"], slip_window["planned_stop"])
+        # For targets, positive slippage is good (higher price). For stops, lower price is bad.
+        # So slip% = abs(actual - planned) / planned * 100.
+        x_slip_pct = abs(slip_window["actual_exit"] - planned_exit) / planned_exit * 100
+        round_trip_slip_pct = e_slip_pct + x_slip_pct
+        
+        threshold = 0.10
+        exceeds = round_trip_slip_pct > threshold
+        
+        num_exceeding = exceeds.sum()
+        
+        # Calculate longest consecutive exceedance
+        longest_consecutive = 0
+        current_streak = 0
+        for val in exceeds:
+            if val:
+                current_streak += 1
+                longest_consecutive = max(longest_consecutive, current_streak)
+            else:
+                current_streak = 0
+                
+        fail_slippage = "TRIGGERED" if longest_consecutive >= 25 else "NOT TRIGGERED"
+        
+        avg_entry_slip = e_slip_pct.mean()
+        avg_exit_slip = x_slip_pct.mean()
+        
         gap_exits = sub["exit_reason"].str.contains("GAP").sum()
         ambig_exits = sub["exit_reason"].str.contains("AMBIGUITY").sum()
         
@@ -45,7 +90,6 @@ def generate_milestones():
         
         # Failure Conditions
         fail_expectancy = "TRIGGERED" if m >= 50 and expectancy_r < 0 else "OK"
-        fail_slippage = "TRIGGERED" if avg_slip > 0.10 else "OK" # >2x assumed 0.05%
         
         content = f"""# Milestone {m} Report
         
@@ -67,15 +111,21 @@ def generate_milestones():
 * total costs: {total_costs:.2f}
 
 ## Execution
-* average entry slippage: {entry_slip.mean():.3f}%
-* average exit slippage: {exit_slip.mean():.3f}%
+* average entry slippage: {avg_entry_slip:.3f}%
+* average exit slippage: {avg_exit_slip:.3f}%
 * number of gap exits: {gap_exits}
 * number of same-bar ambiguities: {ambig_exits}
 
 ## Predefined Failure Conditions
 * Negative net expectancy after 50 trades: {fail_expectancy}
-* Slippage >2x assumed: {fail_slippage}
 * Drawdown >15%: Evaluated at Portfolio Level
+
+### Slippage Evaluation
+Slippage threshold: {threshold:.2f}%
+Window: latest 25 completed trades
+Trades exceeding threshold: {num_exceeding}/{len(slip_window)}
+Longest consecutive exceedance: {longest_consecutive}
+SLIPPAGE FAILURE: {fail_slippage}
 """
         # Rolling Diagnostics (Rolling 20 trades)
         if m >= 20:

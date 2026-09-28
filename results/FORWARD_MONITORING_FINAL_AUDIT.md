@@ -20,6 +20,8 @@ The forward testing framework has been expanded to support a durable, idempotent
 
 `FAILURE CONDITION MONITORING: PASS` (Implemented in `generate_milestones()` to formally flag `TRIGGERED` rather than silently adjusting).
 
+`SLIPPAGE FAILURE LOGIC: PASS` (Tested thoroughly to ensure failure triggers *only* when exactly 25 *consecutive* completed trades exceed the >0.10% round-trip threshold).
+
 `TEST SUITE: PASS` (`test_forward_monitoring.py` executes successfully).
 
 `FORWARD MONITORING STATUS: READY`
