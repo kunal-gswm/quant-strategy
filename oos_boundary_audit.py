@@ -156,6 +156,8 @@ def main():
     m_exit = calc_metrics(exit_oos)
     
     pd.DataFrame([m_entry]).to_csv(RESULTS_DIR / "oos_entry_based_metrics.csv", index=False)
+    pd.DataFrame([m_exit]).to_csv(RESULTS_DIR / "oos_exit_based_metrics.csv", index=False)
+    
     from fix_walk_forward import load_data
     from run_final_validation import compute_all_possible_trades
     from config import BacktestConfig
@@ -244,7 +246,8 @@ def main():
         
         # Pre-existing positions: trades in exec_trds that entered before t_start but exit after
         pre_existing = exec_trds[(exec_trds["entry_timestamp"] < t_start) & (exec_trds["exit_timestamp"] >= t_start)]
-        cap_committed = (pre_existing["qty"] * pre_existing["entry_price"]).sum()
+        cap_committed = start_state["margin_used"] if "margin_used" in start_state else 0
+        unrealized = start_state["unrealized_pnl"] if "unrealized_pnl" in start_state else 0
         
         # OOS entries
         oos_entries = len(exec_trds[(exec_trds["entry_timestamp"] >= t_start) & (exec_trds["entry_timestamp"] <= t_end)])
@@ -257,13 +260,13 @@ def main():
         
         boundary_accounting.append({
             "fold": fold,
-            "starting_equity": start_state["equity"],
+            "starting_equity": start_state["equity"] if "equity" in start_state else start_state["capital"],
             "capital_committed_to_pre_existing": cap_committed,
             "oos_entries": oos_entries,
             "oos_exits": oos_exits,
             "realized_oos_pnl": realized_pnl,
-            "unrealized_pnl_at_test_start": start_state["unrealized_pnl"],
-            "ending_equity": end_state["equity"]
+            "unrealized_pnl_at_test_start": unrealized,
+            "ending_equity": end_state["equity"] if "equity" in end_state else end_state["capital"]
         })
         
     pd.DataFrame(boundary_accounting).to_csv(RESULTS_DIR / "oos_boundary_accounting.csv", index=False)

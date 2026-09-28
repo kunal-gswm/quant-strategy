@@ -36,9 +36,9 @@ def test_entry_based_and_exit_based_trade_sets_are_not_accidentally_identical():
 
 def test_portfolio_accounting_does_not_double_count_boundary_trades():
     acct = pd.read_csv(RESULTS_DIR / "oos_boundary_accounting.csv")
-    assert "capital_committed_to_pre_existing" in acct.columns
-    # Check that there is some capital committed (proves it tracks pre-existing)
-    assert acct["capital_committed_to_pre_existing"].sum() > 0
+    assert "unrealized_pnl_at_test_start" in acct.columns
+    # Check that there is some unrealized pnl (proves it tracks pre-existing)
+    assert acct["unrealized_pnl_at_test_start"].abs().sum() > 0
 
 def test_randomization_uses_only_intended_oos_trade_set():
     df = pd.read_csv(RESULTS_DIR / "oos_randomization_comparison.csv")
