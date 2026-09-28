@@ -201,6 +201,15 @@ def run_daily():
     execution_timestamp = pd.Timestamp.now()
     today = execution_timestamp.normalize()
     
+    # Verify configuration fingerprint
+    fp = get_configuration_fingerprint()
+    from forward_config import STRATEGY_VERSION
+    if fp["strategy_version"] != "TPQSE_v1.0":
+        from forward_watchdog import log_alert
+        log_alert("CRITICAL", "CONFIG", "STRATEGY_CONFIGURATION_CHANGED", today.strftime("%Y-%m-%d"))
+        logging.critical("STRATEGY_CONFIGURATION_CHANGED — aborting session")
+        return
+    
     universe = get_universe()
     day_data, prev_day_data, max_data_ts, syms_exp, syms_proc, syms_fail = fetch_and_prepare_data(universe, today)
     
@@ -248,7 +257,8 @@ def run_daily():
         "execution_timestamp": execution_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
         "scheduler_timestamp": execution_timestamp.strftime("%Y-%m-%d %H:%M:%S"),
         "market_date": today.strftime("%Y-%m-%d"),
-        "strategy_version": get_frozen_forward_config().strategy.__class__.__name__ + "_TPQSE_v1.0", # Simplified
+        "strategy_version": STRATEGY_VERSION,
+        "config_fingerprint": fp["sha256"],
         "universe_version": "CURRENT_ACTIVE_UNIVERSE",
         "symbols_expected": syms_exp,
         "symbols_processed": syms_proc,
@@ -265,7 +275,7 @@ def run_daily():
         "error_count": 1 if status in ["RUNTIME_ERROR", "INTEGRITY_FAILURE"] else 0,
         "warning_count": 1 if status == "DATA_DELAY" else 0
     }
-    pd.DataFrame([health_record]).to_csv(RESULTS_DIR / "forward_runner_health.csv", mode='a', header=not (RESULTS_DIR / "forward_runner_health.csv").exists(), index=False)
+    pd.DataFrame([health_record]).to_csv(forward_engine.RESULTS_DIR / "forward_runner_health.csv", mode='a', header=not (forward_engine.RESULTS_DIR / "forward_runner_health.csv").exists(), index=False)
     
     generate_monthly_report(today)
     check_final_milestone()

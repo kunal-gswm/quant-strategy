@@ -35,7 +35,7 @@ The first invocation of `daily_forward_runner.py` occurred at 00:38 IST on 2026-
 No market data for today. Skipping session.
 ```
 
-This is **expected behavior**. The scheduled daemon cron (`30 16 * * 1-5`) will execute the first genuine data-bearing session at 16:30 IST on the next trading day (Monday 2026-09-29 after market close, or Tuesday 2026-09-30 if 2026-09-29 is not a trading day).
+This is **expected behavior**. The scheduled daemon cron (`30 16 * * 1-5`) will execute the first genuine data-bearing session at 16:30 IST on the next trading day (expected to be the next non-holiday weekday). Because no reliable NSE calendar is integrated, the exact next eligible session cannot be definitively determined by the reporting layer in advance, but the engine will dynamically process data as Yahoo Finance publishes it.
 
 **No forward signal, trade, or portfolio state was recorded.** The forward ledger is clean.
 
