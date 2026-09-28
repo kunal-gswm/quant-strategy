@@ -3,18 +3,26 @@ import numpy as np
 from pathlib import Path
 from datetime import datetime
 import math
+import os
 
 from forward_config import get_frozen_forward_config, STRATEGY_VERSION, UNIVERSE_NAME, SURVIVORSHIP_STATUS
 from portfolio_engine import get_leg_cost
 
 RESULTS_DIR = Path("d:/stratergy/results")
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+SNAPSHOT_DIR = RESULTS_DIR / "forward_universe_snapshots"
+SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+
+# Immutable Launch Timestamp
+FORWARD_START_TIMESTAMP = pd.to_datetime("2026-09-29")
 
 class ForwardPaperEngine:
     def __init__(self, start_date: str, initial_capital: float = 1_000_000.0, risk_pct: float = 0.005, max_positions: int = 10):
         self.cfg = get_frozen_forward_config()
         self.start_date = pd.to_datetime(start_date)
-        
+        if self.start_date < FORWARD_START_TIMESTAMP:
+            raise ValueError("Forward tests cannot start before the immutable FORWARD_START_TIMESTAMP.")
+            
         self.cash = initial_capital
         self.risk_pct = risk_pct
         self.max_positions = max_positions
@@ -27,15 +35,30 @@ class ForwardPaperEngine:
         self.portfolio_history = []
         
         self.current_date = self.start_date
+        self.universe = []
+
+        # Load existing files if they exist to prevent overwrite of forward testing progress
+        if (RESULTS_DIR / "forward_signals.csv").exists():
+            self.signals_log = pd.read_csv(RESULTS_DIR / "forward_signals.csv").to_dict('records')
+        if (RESULTS_DIR / "forward_trades.csv").exists():
+            self.trades_log = pd.read_csv(RESULTS_DIR / "forward_trades.csv").to_dict('records')
+            
+    def save_universe_snapshot(self, current_date: pd.Timestamp, universe: list):
+        self.universe = universe
+        snapshot = pd.DataFrame(universe)
+        snapshot["universe_version"] = UNIVERSE_NAME
+        snapshot["snapshot_timestamp"] = current_date
+        filename = SNAPSHOT_DIR / f"universe_{current_date.strftime('%Y%m%d')}.csv"
+        snapshot.to_csv(filename, index=False)
         
     def step(self, current_date: pd.Timestamp, day_data: dict, prev_day_data: dict = None):
         """
         Process a single day in the forward test.
-        day_data: dict mapping symbol -> pd.Series containing Open, High, Low, Close, Volume for current_date
-        prev_day_data: data up to current_date - 1 (for signal generation)
         """
         self.current_date = current_date
-        
+        if self.current_date < FORWARD_START_TIMESTAMP:
+            return
+            
         # 1. Execute Exits (Stops and Targets)
         still_active = []
         for pos in self.active_positions:
@@ -49,19 +72,30 @@ class ForwardPaperEngine:
                     exit_price = bar["Open"]
                     self._close_position(pos, exit_price, "STOP_GAP", current_date)
                     continue
-                elif bar["Low"] <= pos["stop_price"]:
-                    # Normal stop hit intrabar
-                    exit_price = pos["stop_price"]
-                    self._close_position(pos, exit_price, "STOP", current_date)
-                    continue
+                # Check for gap through target
                 elif bar["Open"] >= pos["target_price"]:
-                    # Gap up through target
                     exit_price = bar["Open"]
                     self._close_position(pos, exit_price, "TARGET_GAP", current_date)
                     continue
-                elif bar["High"] >= pos["target_price"]:
-                    # Normal target hit
-                    exit_price = pos["target_price"]
+                    
+                # Check Same-Bar Stop/Target Ambiguity
+                hit_stop = bar["Low"] <= pos["stop_price"]
+                hit_target = bar["High"] >= pos["target_price"]
+                
+                if hit_stop and hit_target:
+                    # Conservative rule: STOP FIRST
+                    # We apply exit slippage to the exact stop price
+                    exit_price = pos["stop_price"] * (1 - self.cfg.execution.slippage_value / 100.0)
+                    self._close_position(pos, exit_price, "STOP_SAME_BAR_AMBIGUITY", current_date)
+                    continue
+                elif hit_stop:
+                    # Normal stop
+                    exit_price = pos["stop_price"] * (1 - self.cfg.execution.slippage_value / 100.0)
+                    self._close_position(pos, exit_price, "STOP", current_date)
+                    continue
+                elif hit_target:
+                    # Normal target
+                    exit_price = pos["target_price"] * (1 - self.cfg.execution.slippage_value / 100.0)
                     self._close_position(pos, exit_price, "TARGET", current_date)
                     continue
             
@@ -82,16 +116,14 @@ class ForwardPaperEngine:
             sym = sig["symbol"]
             if sym in day_data:
                 bar = day_data[sym]
-                # Entry is next open
                 entry_price = bar["Open"]
                 
-                # Apply slippage
+                # Apply entry slippage
                 slippage = entry_price * (self.cfg.execution.slippage_value / 100.0)
                 actual_entry_price = entry_price + slippage
                 
                 risk_per_share = actual_entry_price - sig["planned_stop"]
                 if risk_per_share > 0 and len(self.active_positions) < self.max_positions:
-                    # Size based on equity
                     risk_budget = current_equity * self.risk_pct
                     qty = math.floor(risk_budget / risk_per_share)
                     
@@ -105,14 +137,14 @@ class ForwardPaperEngine:
                             "trade_id": f"TRD_{len(self.trades_log)+len(self.active_positions)+1}",
                             "symbol": sym,
                             "signal_timestamp": sig["signal_timestamp"],
-                            "entry_timestamp": current_date, # Entered on current date's open
+                            "entry_timestamp": current_date,
                             "entry_price": actual_entry_price,
                             "qty": qty,
                             "stop_price": sig["planned_stop"],
                             "target_price": sig["planned_target"],
                             "buy_cost": buy_cost,
                             "trade_value_buy": cost_est,
-                            "last_price": bar["Close"], # Mark to market at close
+                            "last_price": bar["Close"],
                             "risk_rupees": risk_per_share * qty
                         }
                         self.active_positions.append(pos)
@@ -122,43 +154,42 @@ class ForwardPaperEngine:
                 else:
                     sig["signal_status"] = "REJECTED_RISK"
                     
+                # Signal is processed
                 self.signals_log.append(sig)
+                self.persist_signals([sig])
             else:
-                # Keep active if no data today
                 remaining_signals.append(sig)
                 
         self.active_signals = remaining_signals
         
-        # 3. Generate New Signals based on prev_day_data
-        # Note: In a true forward test, we compute indicators up to current_date - 1 (the close of yesterday)
-        # and if a signal fires, it becomes active for tomorrow (or today's open, if we are computing before market open).
-        # We assume prev_day_data contains the finalized technical indicators for yesterday.
+        # 3. Generate New Signals
         if prev_day_data:
             for sym, data in prev_day_data.items():
                 if data.get("signal") == True:
-                    planned_entry = data["Close"] # baseline reference
+                    planned_entry = data["Close"] 
                     atr = data["ATR"]
                     stop = planned_entry - (atr * self.cfg.strategy.stop_atr_multiple)
-                    target = planned_entry + (atr * self.cfg.strategy.reward_risk_multiple) * 1.5 # simplified matching
+                    target = planned_entry + (atr * self.cfg.strategy.reward_risk_multiple) * 1.5
                     
-                    new_sig = {
-                        "symbol": sym,
-                        "signal_timestamp": data["date"], # Yesterday's date
-                        "entry_timestamp": current_date, # Planned for today
-                        "signal_price": planned_entry,
-                        "planned_entry": planned_entry,
-                        "ATR": atr,
-                        "planned_stop": stop,
-                        "planned_target": target,
-                        "strategy_version": STRATEGY_VERSION,
-                        "data_timestamp": data["date"], # Time data was acquired
-                        "signal_status": "PENDING"
-                    }
-                    # Validate Data Integrity Rule: no future data
-                    assert pd.to_datetime(new_sig["data_timestamp"]) <= pd.to_datetime(new_sig["signal_timestamp"])
-                    assert pd.to_datetime(new_sig["entry_timestamp"]) > pd.to_datetime(new_sig["signal_timestamp"])
-                    
-                    self.active_signals.append(new_sig)
+                    sig_time = pd.to_datetime(data["date"])
+                    if sig_time >= FORWARD_START_TIMESTAMP:
+                        new_sig = {
+                            "symbol": sym,
+                            "signal_timestamp": sig_time,
+                            "entry_timestamp": current_date, 
+                            "signal_price": planned_entry,
+                            "planned_entry": planned_entry,
+                            "ATR": atr,
+                            "planned_stop": stop,
+                            "planned_target": target,
+                            "strategy_version": STRATEGY_VERSION,
+                            "data_timestamp": sig_time, # Data is as of signal generation time
+                            "signal_status": "PENDING"
+                        }
+                        assert pd.to_datetime(new_sig["data_timestamp"]) <= pd.to_datetime(new_sig["signal_timestamp"])
+                        assert pd.to_datetime(new_sig["entry_timestamp"]) > pd.to_datetime(new_sig["signal_timestamp"])
+                        
+                        self.active_signals.append(new_sig)
         
         # 4. End of Day Accounting
         market_value_end = sum(p["last_price"] * p["qty"] for p in self.active_positions)
@@ -187,7 +218,7 @@ class ForwardPaperEngine:
         
         r_mult = net_pnl / pos["risk_rupees"] if pos["risk_rupees"] > 0 else 0
         
-        self.trades_log.append({
+        trade_record = {
             "trade_id": pos["trade_id"],
             "symbol": pos["symbol"],
             "signal_timestamp": pos["signal_timestamp"],
@@ -204,16 +235,27 @@ class ForwardPaperEngine:
             "net_pnl": net_pnl,
             "r_multiple": r_mult,
             "strategy_version": STRATEGY_VERSION
-        })
+        }
+        self.trades_log.append(trade_record)
+        self.persist_trades([trade_record])
+        
+    def persist_signals(self, signals):
+        df = pd.DataFrame(signals)
+        path = RESULTS_DIR / "forward_signals.csv"
+        df.to_csv(path, mode='a', header=not path.exists(), index=False)
+        
+    def persist_trades(self, trades):
+        df = pd.DataFrame(trades)
+        path = RESULTS_DIR / "forward_trades.csv"
+        df.to_csv(path, mode='a', header=not path.exists(), index=False)
         
     def save_logs(self):
-        pd.DataFrame(self.signals_log).to_csv(RESULTS_DIR / "forward_signals.csv", index=False)
-        pd.DataFrame(self.trades_log).to_csv(RESULTS_DIR / "forward_trades.csv", index=False)
         pd.DataFrame(self.portfolio_history).to_csv(RESULTS_DIR / "forward_portfolio_history.csv", index=False)
 
 def check_milestones():
-    # Fixed evaluation checkpoints
-    trades = pd.read_csv(RESULTS_DIR / "forward_trades.csv")
+    path = RESULTS_DIR / "forward_trades.csv"
+    if not path.exists(): return
+    trades = pd.read_csv(path)
     n_trades = len(trades)
     
     milestones = [25, 50, 100, 150, 200]
@@ -224,17 +266,27 @@ def check_milestones():
         sub = trades.iloc[:m]
         win_rate = (sub["net_pnl"] > 0).mean()
         avg_r = sub["r_multiple"].mean()
+        # Formalized Expectancy: mean(net_pnl / initial_trade_risk) -> which is avg_r
+        expectancy_r = avg_r
         rows.append({
             "milestone": m,
+            "date_reached": sub["exit_timestamp"].iloc[-1],
             "win_rate": win_rate,
             "avg_r": avg_r,
+            "expectancy_r": expectancy_r,
             "status": "PASSED_EVALUATION"
         })
         
     if rows:
         pd.DataFrame(rows).to_csv(RESULTS_DIR / "forward_validation_milestones.csv", index=False)
 
-if __name__ == "__main__":
-    # In a real environment, this script runs daily.
-    # For now, this is a skeleton architecture establishing the rules.
-    pass
+def log_data_revision(symbol, original_date, original_val, revised_val):
+    record = {
+        "symbol": symbol,
+        "original_data_timestamp": original_date,
+        "original_values": str(original_val),
+        "revised_values": str(revised_val),
+        "revision_detected_timestamp": pd.Timestamp.now()
+    }
+    path = RESULTS_DIR / "forward_data_revisions.csv"
+    pd.DataFrame([record]).to_csv(path, mode='a', header=not path.exists(), index=False)
