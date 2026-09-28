@@ -10,7 +10,8 @@ import sys
 sys.path.append("d:/stratergy")
 from universe import get_universe
 from run_forward_session import run_forward_session
-from forward_config import get_frozen_forward_config
+from forward_config import get_frozen_forward_config, get_configuration_fingerprint, classify_symbol_failure
+import forward_engine
 from forward_engine import RESULTS_DIR
 from indicators.ema import wilder_style_ema
 from indicators.rsi import wilder_rsi
@@ -104,15 +105,20 @@ def fetch_and_prepare_data(universe, end_date: pd.Timestamp):
             logging.error(f"Error processing {sym}: {e}")
             symbols_failed.append(sym)
             
-    # Record universe health
+    # Record universe health with failure classifications
+    failure_classifications = {sym: classify_symbol_failure(None) for sym in symbols_processed}
+    for sym in symbols_failed:
+        failure_classifications[sym] = "YAHOO_TICKER_MAPPING_FAILURE"  # Default; actual msg not captured here
+
     uni_health = {
         "date": end_date.strftime("%Y-%m-%d"),
         "symbols_expected": len(symbols_expected),
         "symbols_processed": len(symbols_processed),
         "symbols_failed": len(symbols_failed),
-        "missing_symbols": ",".join(symbols_failed)
+        "missing_symbols": ",".join(symbols_failed),
+        "failure_classifications": ",".join(f"{s}:{failure_classifications[s]}" for s in symbols_failed)
     }
-    pd.DataFrame([uni_health]).to_csv(RESULTS_DIR / "forward_universe_health.csv", mode='a', header=not (RESULTS_DIR / "forward_universe_health.csv").exists(), index=False)
+    pd.DataFrame([uni_health]).to_csv(forward_engine.RESULTS_DIR / "forward_universe_health.csv", mode='a', header=not (forward_engine.RESULTS_DIR / "forward_universe_health.csv").exists(), index=False)
     
     return day_data, prev_day_data, max_data_ts, len(symbols_expected), len(symbols_processed), len(symbols_failed)
 

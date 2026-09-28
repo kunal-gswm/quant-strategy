@@ -5,11 +5,12 @@ import uuid
 import datetime
 
 from forward_config import STRATEGY_VERSION, UNIVERSE_NAME
-from forward_engine import ForwardPaperEngine, RESULTS_DIR
+import forward_engine
+from forward_engine import ForwardPaperEngine
 from universe import get_universe
 
 def generate_milestones():
-    path = RESULTS_DIR / "forward_trades.csv"
+    path = forward_engine.RESULTS_DIR / "forward_trades.csv"
     if not path.exists(): return
     
     trades = pd.read_csv(path)
@@ -21,7 +22,7 @@ def generate_milestones():
     passed = [m for m in milestones if n_trades >= m]
     
     for m in passed:
-        ms_file = RESULTS_DIR / f"milestone_{m}.md"
+        ms_file = forward_engine.RESULTS_DIR / f"milestone_{m}.md"
         if ms_file.exists():
             continue
             
@@ -145,7 +146,7 @@ SLIPPAGE FAILURE: {fail_slippage}
                 "rolling_average_slippage": roll_slip,
                 "current_drawdown": 0.0 # Placeholder, requires portfolio tie-in
             }
-            pd.DataFrame([roll_row]).to_csv(RESULTS_DIR / "forward_rolling_metrics.csv", mode='a', header=not (RESULTS_DIR / "forward_rolling_metrics.csv").exists(), index=False)
+            pd.DataFrame([roll_row]).to_csv(forward_engine.RESULTS_DIR / "forward_rolling_metrics.csv", mode='a', header=not (forward_engine.RESULTS_DIR / "forward_rolling_metrics.csv").exists(), index=False)
             
         with open(ms_file, "w") as f:
             f.write(content)
@@ -192,7 +193,7 @@ def run_forward_session(today_str: str, day_data: dict, prev_day_data: dict):
     }
     
     df = pd.DataFrame([log_record])
-    path = RESULTS_DIR / "forward_session_log.csv"
+    path = forward_engine.RESULTS_DIR / "forward_session_log.csv"
     df.to_csv(path, mode='a', header=not path.exists(), index=False)
     
     return log_record

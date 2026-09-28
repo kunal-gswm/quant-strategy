@@ -2,8 +2,7 @@ import pandas as pd
 from pathlib import Path
 from datetime import datetime
 
-RESULTS_DIR = Path("d:/stratergy/results")
-RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+from forward_engine import RESULTS_DIR
 
 def log_alert(severity, category, description, affected_session):
     record = {

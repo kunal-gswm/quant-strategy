@@ -42,3 +42,59 @@ def get_frozen_forward_config() -> BacktestConfig:
         ),
         starting_capital=1_000_000.0
     )
+
+
+import hashlib
+
+def get_configuration_fingerprint() -> dict:
+    """
+    Returns a deterministic fingerprint of the frozen TPQSE_v1.0 configuration.
+    If any value changes, the hash changes, signaling a configuration drift.
+    """
+    cfg = get_frozen_forward_config()
+    fingerprint = {
+        "strategy_version": STRATEGY_VERSION,
+        "ema_period": cfg.strategy.ema_period,
+        "ema_slope_period": cfg.strategy.slope_bars,
+        "rsi_period": cfg.strategy.rsi_period,
+        "rsi_threshold": cfg.strategy.rsi_reclaim_level,
+        "atr_period": cfg.strategy.atr_period,
+        "stop_atr_multiple": cfg.strategy.stop_atr_multiple,
+        "reward_risk_multiple": cfg.strategy.reward_risk_multiple,
+        "slippage_pct": cfg.execution.slippage_value,
+        "risk_percentage": 0.005,
+        "entry_execution_rule": cfg.execution.entry_timing,
+        "intrabar_ambiguity_rule": cfg.execution.intrabar_policy,
+        "universe_version": UNIVERSE_NAME,
+    }
+    canonical = "|".join(f"{k}={v}" for k, v in sorted(fingerprint.items()))
+    fingerprint["sha256"] = hashlib.sha256(canonical.encode()).hexdigest()
+    return fingerprint
+
+
+# Universe failure classifications
+UNIVERSE_FAILURE_CLASSIFICATIONS = {
+    "AVAILABLE": "Symbol data successfully retrieved",
+    "YAHOO_TICKER_MAPPING_FAILURE": "Yahoo Finance returned 'possibly delisted' or 404; may be a ticker rename",
+    "RENAMED": "Symbol confirmed renamed to a new ticker",
+    "DELISTED": "Symbol confirmed delisted from exchange",
+    "DATA_PROVIDER_ERROR": "HTTP or network error from data provider",
+    "NO_DATA": "Symbol exists but returned empty data for the requested period",
+    "UNRESOLVED_DATA_PROVIDER_FAILURE": "Cannot determine the true reason for data unavailability",
+}
+
+def classify_symbol_failure(error_msg: str) -> str:
+    """Classify a symbol failure based on the error message from yfinance."""
+    if error_msg is None:
+        return "AVAILABLE"
+    msg = str(error_msg).lower()
+    if "possibly delisted" in msg or "no timezone found" in msg:
+        return "YAHOO_TICKER_MAPPING_FAILURE"
+    if "404" in msg or "not found" in msg:
+        return "YAHOO_TICKER_MAPPING_FAILURE"
+    if "http error" in msg or "connection" in msg or "timeout" in msg:
+        return "DATA_PROVIDER_ERROR"
+    if "empty" in msg or "no data" in msg:
+        return "NO_DATA"
+    return "UNRESOLVED_DATA_PROVIDER_FAILURE"
+

@@ -7,24 +7,8 @@ import json
 
 sys.path.append("d:/stratergy")
 from forward_config import get_frozen_forward_config, STRATEGY_VERSION, UNIVERSE_NAME
-from forward_engine import ForwardPaperEngine, FORWARD_START_TIMESTAMP, RESULTS_DIR
+from forward_engine import ForwardPaperEngine, FORWARD_START_TIMESTAMP
 
-@pytest.fixture(autouse=True)
-def clean_forward_results():
-    """Clean forward artifacts before and after each test to prevent cross-contamination."""
-    files = [
-        "forward_signals.csv", "forward_trades.csv", "forward_portfolio_history.csv",
-        "forward_open_positions.json", "forward_session_log.csv"
-    ]
-    for f in files:
-        p = RESULTS_DIR / f
-        if p.exists():
-            p.unlink()
-    yield
-    for f in files:
-        p = RESULTS_DIR / f
-        if p.exists():
-            p.unlink()
 
 def test_strategy_parameters_frozen():
     cfg = get_frozen_forward_config()
@@ -46,16 +30,12 @@ def test_no_future_data_used():
 
 def test_entry_occurs_after_signal():
     engine = ForwardPaperEngine()
-    # Generate signal on day 1
     engine.step(pd.to_datetime("2026-09-30"), day_data={}, prev_day_data={"TEST": {"signal": True, "Close": 100, "ATR": 5, "date": "2026-09-29", "EMA": 95, "EMA_slope": 1.0, "RSI": 42}})
-    # Execute entry on day 2
     engine.step(pd.to_datetime("2026-10-01"), day_data={"TEST": {"Open": 101, "High": 105, "Low": 95, "Close": 103, "Volume": 1000}}, prev_day_data={})
-    # Entry timestamp must be after signal timestamp
     pos = engine.active_positions[0]
     assert pd.to_datetime(pos["entry_timestamp"]) > pd.to_datetime(pos["signal_timestamp"])
 
 def test_signals_immutable():
-    # Verified by visual inspection of mode='a' in _append_csv
     pass
 
 def test_forward_timestamps_after_launch():
@@ -64,10 +44,11 @@ def test_forward_timestamps_after_launch():
     assert res["status"] == "SKIPPED"
     assert res["reason"] == "Before launch"
 
-def test_universe_snapshots_reproducible():
+def test_universe_snapshots_reproducible(isolated_results_dir):
     engine = ForwardPaperEngine()
     engine.save_universe_snapshot(pd.to_datetime("2026-09-30"), [{"symbol": "RELIANCE.NS"}])
-    assert (Path("d:/stratergy/results/forward_universe_snapshots") / "universe_20260930.csv").exists()
+    import forward_engine
+    assert (forward_engine.SNAPSHOT_DIR / "universe_20260930.csv").exists()
 
 def test_gap_through_stop():
     engine = ForwardPaperEngine()
