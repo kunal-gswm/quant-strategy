@@ -76,6 +76,8 @@ def simulate_portfolio(trades, prepared_data, cfg, initial_capital=1_000_000, ri
                     "symbol": pos["symbol"],
                     "entry_timestamp": pos["entry_timestamp"],
                     "exit_timestamp": pos["exit_timestamp"],
+                    "entry_price": pos["entry_price"],
+                    "exit_price": exit_price,
                     "qty": qty,
                     "net_pnl": net_pnl,
                     "r_multiple": r_mult
