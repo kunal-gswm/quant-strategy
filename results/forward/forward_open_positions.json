@@ -1,1 +1,1 @@
-[]
+[{"trade_id": "TPQSE_v1.0_APLAPOLLO.NS_20261009", "symbol": "APLAPOLLO.NS", "signal_timestamp": "2026-10-09", "entry_timestamp": "2026-10-09", "planned_entry": 2114.10009765625, "actual_entry": 2053.226051147461, "qty": 50, "stop_price": 2015.7600386824397, "target_price": 2310.780215603871, "buy_cost": 121.77950628742242, "trade_value_buy": 102661.30255737306, "last_price": 2114.10009765625, "initial_risk_rupees": 1873.300623251066}]
